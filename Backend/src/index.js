@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const connectDB = require('./db');
 const config = require('./config')
 const userRoutes = require('./routes/userRoutes');
@@ -7,7 +8,7 @@ const errorMiddleware = require('./middlewares/errorMiddleware');
 
 const {PORT} = config;
 const app = express();
-
+app.use(cors());
 // Conectar a MongoDB
 connectDB();
 

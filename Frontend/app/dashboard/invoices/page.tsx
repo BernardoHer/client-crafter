@@ -1,37 +1,63 @@
 "use client"
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { User } from '@/app/lib/definitions';
 
 interface Invoice {
-  id: number;
-  userName: string;
-  userEmail: string;
-  invoiceAmount: number;
-  invoiceStatus: 'Pending' | 'Paid';
+  _id: number;
+  customer_id: string;
+  amount: string;
+  date: string;
+  status: 'Pending' | 'Paid';
 }
-
+const purchasesMap: Record<string, Invoice[]> = {};
+let userPurchases:Invoice[];
 const InvoicesPage: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-
+  const [users, setUsers] = useState<User[]>([]);
   useEffect(() => {
     fetchAllInvoices();
   }, []);
 
   const fetchAllInvoices = async () => {
     try {
-      const response = await axios.get('/api/invoices');
+      const response = await axios.get('http://localhost:3001/api/purchases');
       setInvoices(response.data);
+
+    response.data.forEach((purchase:Invoice) => {
+      if (!purchasesMap[purchase.customer_id]) {
+        purchasesMap[purchase.customer_id] = [];
+      }
+      purchasesMap[purchase.customer_id].push(purchase);
+    });
+      
     } catch (error) {
       console.error('Error fetching invoices:', error);
     }
+    try {
+      const response = await axios.get('http://localhost:3001/api/users');
+      console.log(response.data);
+      response.data.forEach((user:User) => {
+        console.log(`Nombre: ${user.name}, Email: ${user.email}`);
+  
+        userPurchases = purchasesMap[user._id] || [];
+        userPurchases.forEach((purchase) => {
+          console.log(`  Compra: ${purchase.amount}, Estado: ${purchase.status}`);
+        });
+      });
+      setUsers(response.data);
+    }catch(error){
+      console.error('Error fetching users: ', error)
+    }
+    
   };
 
   const handlePayInvoice = async (id: number) => {
     try {
-      await axios.patch(`/api/invoices/${id}`, { invoiceStatus: 'Paid' }); 
+      await axios.patch(`/api/invoices/${id}`, { status: 'Paid' }); 
       setInvoices((prevInvoices) =>
         prevInvoices.map((invoice) =>
-          invoice.id === id ? { ...invoice, invoiceStatus: 'Paid' } : invoice
+          invoice._id === id ? { ...invoice, status: 'Paid' } : invoice
         )
       );
     } catch (error) {
@@ -54,15 +80,15 @@ const InvoicesPage: React.FC = () => {
         </thead>
         <tbody>
           {invoices.map((invoice) => (
-            <tr key={invoice.id}>
-              <td className="py-2 px-4 border-b">{invoice.userName}</td>
-              <td className="py-2 px-4 border-b">{invoice.userEmail}</td>
-              <td className="py-2 px-4 border-b">${invoice.invoiceAmount.toFixed(2)}</td>
-              <td className="py-2 px-4 border-b">{invoice.invoiceStatus}</td>
+            <tr key={invoice._id}>
+              <td className="py-2 px-4 border-b">{invoice.customer_id}</td>
+              <td className="py-2 px-4 border-b">{invoice.amount}</td>
+              <td className="py-2 px-4 border-b">${invoice.date}</td>
+              <td className="py-2 px-4 border-b">{invoice.status}</td>
               <td className="py-2 px-4 border-b">
-                {invoice.invoiceStatus === 'Pending' && (
+                {invoice.status === 'Pending' && (
                   <button
-                    onClick={() => handlePayInvoice(invoice.id)}
+                    onClick={() => handlePayInvoice(invoice._id)}
                     className="bg-blue-500 text-white px-2 py-1 rounded"
                   >
                     Pay
